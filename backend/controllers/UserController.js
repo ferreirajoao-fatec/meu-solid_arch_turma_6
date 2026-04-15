@@ -26,7 +26,7 @@ module.exports = class UserController {
         return
        }
        if(password !== confirmpassword){
-        res.status(422).json({message: "Senhas não coincidem"})
+        res.status(422).json({message: "Senhas não são iguais"})
         return
        }
 
