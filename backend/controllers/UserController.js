@@ -123,17 +123,24 @@ module.exports = class UserController {
    }
 
    static async editUser(req, res) {
-      const id = req.params.id
 
       const token = getTokens(req)
       const user = await getUserByToken(token)
 
       const { name, email, phone, password, confirmpassword } = req.body
+
       let image = ''
+
+      if(req.file){
+         image = req.file.filename
+      }
+
       if (!name) {
          res.status(422).json({ message: "Nome é obrigatório" })
          return
       }
+      user.name = name
+
       if (!email) {
          res.status(422).json({ message: "Email é obrigatório" })
          return
@@ -142,27 +149,39 @@ module.exports = class UserController {
          res.status(422).json({ message: "Telefone é obrigatório" })
          return
       }
-      if (!password) {
-         res.status(422).json({ message: "Senha é obrigatório" })
+      user.phone = phone
+
+      const userExist = await User.findOne({ email: email })
+      if (user.email !== email && userExist) {
+         res.status(422).json({ message: "Existe um problema de chave de e-mail com a edição." })
          return
       }
-      if (!confirmpassword) {
-         res.status(422).json({ message: "Confirmação de senha é obrigatório" })
-         return
-      }
+      user.email = email
+
       if (password !== confirmpassword) {
          res.status(422).json({ message: "Senhas não são iguais" })
          return
       }
-
-      const userExist = await User.findOne({email: email})
-
-      if (userExist.email === email && userExist) {
-         res.status(422)({ message: "Existe um problema de chave de e-mail com a edição." })
+      else if (password === confirmpassword && password != null) {
+         const salt = await bcrypt.genSalt(12)
+         const password = await bcrypt.hash(password, salt)
+         user.password = passwordHash
       }
 
-      const salt = await bcrypt.genSalt(12)
-      const passwordHash = await bcrypt.hash(password, salt)
+      try {
+         const updatedUser = await User.findOneAndUpdate(
+            { _id: user._id },
+            { $set: user },
+            { new: true }
+         )
+         res.status(202).json({
+            message: "Dados aceitos e processados",
+            updatedUser
+         })
+      } catch (err) {
+         res.status(500).json({ message: err })
+         return
+      }
 
    }
 }
